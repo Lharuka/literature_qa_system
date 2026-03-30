@@ -1,0 +1,1627 @@
+=== 第 1 页 ===
+机器学习力场: 跨学科应用中的前沿进展与技术
+挑战
+胡俊宝1,2, 徐礼锋1,2, 江剑1,2*
+1. 中国科学院化学研究所高分子物理与化学实验室, 北京分子科学国家研究中心, 北京100190
+2. 中国科学院大学, 北京100049
+*通讯作者, E-mail: jiangj@iccas.ac.cn
+收稿日期: 2025-03-22; 接受日期: 2025-04-15; 网络版发表日期: 2025-05-26
+国家自然科学基金(编号: 22273112)资助项目
+摘要
+机器学习力场研究近年来在理论建模、算法开发及实际应用方面取得显著进展, 其核心目标在于融合
+量子化学计算的精度与机器学习方法的效率, 实现大尺度分子体系的动力学模拟. 本文系统梳理该领域研究进
+展: 首先, 综述机器学习力场的发展脉络与关键问题, 重点解析高阶等变神经网络的理论基础及算法实现; 其次,
+介绍主动学习方法在提升数据采集效率方面的优势与创新路径; 再次, 揭示当前方法在复杂体系应用中的局限
+性, 包括有机体系中的结构崩溃与弱相互作用失效, 以及并行效率瓶颈等问题; 最后, 总结通用大模型与公开数
+据集在该领域的应用现状. 作为AI for Science的典型范例, 机器学习力场将深化在材料开发、分子设计等领域的
+应用, 为复杂化学体系的精准模拟提供理论与方法支撑.
+关键词
+机器学习, 等变神经网络, 分子动力学模拟, 通用大模型, 弱相互作用, 主动学习
+1
+引言
+分子动力学(molecular dynamics, MD)模拟作为现
+代科学研究的重要工具, 已在化学、分子生物学、物
+理学及材料科学等领域展现出不可替代的作用. 该技
+术通过牛顿力学来模拟原子或分子体系的动态演变,
+为研究人员提供了一种探究物质微观结构以及理解其
+宏观性质的途径
+[1~4].
+在MD模拟中, 原子力信息的精确计算是决定模
+拟可靠性的关键因素. 基于量子力学原理的薛定谔方
+程(Schrödinger equation, SE)虽然能够严格描述化学
+体系的物理本质, 但其解析解仅能处理类氢原子等简
+单体系
+[5]. 对于复杂化学体系, 研究者通常采用近似方
+法求解SE,
+如耦合簇单双激发微扰三重激发方法
+(coupled cluster single-double and perturbative triple,
+CCSD(T)), 因其高精度被视为量子化学计算的“金标
+准”. 然而, 如图1a所示, 该方法的计算复杂度与体系
+原子数N 呈现O N
+(
+)
+7 量级的指数增长关系
+[6]. 密度泛函
+理论(density functional theory, DFT)通过电子密度分布
+取代波函数的方法将计算复杂度降低至O N
+(
+)
+3 量级, 但
+其计算成本仍制约着对大型体系长时间尺度的模拟
+应用
+[5].
+引用格式:
+Hu J, Xu L, Jiang J. Machine learning force fields: recent advances and technical challenges in cross-disciplinary applications. Sci Sin Chim, 2025, 55:
+1734–1750, doi: 10.1360/SSC-2025-0084
+© 2025 《中国科学》杂志社
+www.scichina.com
+中国科学: 化学
+2025 年
+第55 卷
+第6 期: 1734 ~ 1750
+SCIENTIA SINICA Chimica
+chemcn.scichina.com
+AI+化学专题
+评述
+
+
+=== 第 2 页 ===
+经典力场方法通过构建经验势函数(如键合作用
+的谐振子模型与非键合作用的Lennard-Jones势)实现
+计算效率的显著提升, 其线性标度O N
+( (
+))
+1 的特性, 可
+支持亿级原子体系的动力学模拟
+[5]. 然而, 图1b所示的
+乙醇与丙二醛分子势能面(potential energy surface,
+PES)对比的研究表明
+[7,8], GAFF、MMFF94、Chemi-
+cal和UFF等典型力场方法在势能面精度上与CCSD(T)
+基准存在显著偏差. 这源于经验力场方法对相互作用
+的过度简化. 这种精度与效率的固有矛盾严重制约了
+传统分子模拟方法的预测能力
+[9].
+机器学习力场(machine learning force field,
+MLFF), 或称机器学习原子间势(machine learning in-
+teratomic potentials, MLIP), 通过直接学习量子化学方
+法生成的高精度数据集, 绕开了复杂的物理公式求解,
+实现了量化方法级别的计算精度和接近经验力场的计
+算速度, 实现大尺度高精度的MD模拟, 因而获得了广
+泛关注[6,10,11].
+本文从多维度视角系统性梳理MLFF领域的研究
+进展与挑战, 包括MLFF的构建流程、关键科学问题
+与发展脉络, 介绍主动学习方法在提升数据采集效率
+方面的优势与创新路径, 揭示当前方法在复杂体系应
+用中的局限性, 以及通用大模型与公开数据集在该领
+域的应用现状.
+2
+机器学习力场概述
+机器学习力场的构建流程如图2所示
+[12], 主要包
+含三个关键步骤: (1) 通过分子动力学采样或主动学
+习等策略构建具有化学空间代表性的原子或分子结构
+数据库; (2) 采用量子力学方法(以密度泛函理论为主)
+对数据库中的每个结构进行单点计算, 获取势能面的
+精确能量与原子力数据; (3) 通过机器学习模型(如神
+经网络或核方法)建立原子坐标到势能的非线性映射
+关系, 力信息则通过势能对坐标的负梯度(F
+E)
+的自动求导获得. 该方法通过规避量子力学方程的显
+式求解, 在保持量子化学计算精度的同时, 将计算效
+率提升至接近经验力场水平.
+与传统经验力场相比, 机器学习力场在构建方法
+上具有显著差异(表1)[13]. 首先, 其可训练参数一般来
+自神经网络, 且基于误差反向传播实现自动化调参, 而
+非依赖化学直觉的经验公式; 其次, 端到端的MLFF无
+需预设化学键拓扑关系, 可自然描述键断裂与重组过
+程, 这对反应动力学模拟特别有效. 但需注意的是:
+(1) 虽然MLFF的计算速度较量子化学方法提升几个
+数量级, 但总体上仍比经验力场慢1~2个数量级
+[14];
+(2) 其预测精度和泛化能力高度依赖训练数据的完备
+性,
+对未见于训练集的构型可能产生系统性偏差;
+图1
+(网络版彩图) (a) 不同方法的计算效率比较; (b) 量子
+化学方法(以CCSD(T)为例)与几种经验力场方法(以GAFF/
+MMFF94/Ghemical/UFF为例)在乙醇和丙二醛分子的势能面
+示意图. 图片来自文献[7,8]
+Figure 1
+(Color online) (a) Comparison of computational efficiency
+among different methods; (b) schematic diagrams of potential energy
+surfaces for ethanol and glyoxal molecules using quantum chemistry
+methods (CCSD(T) as an example) and empirical force field methods
+(GAFF/MMFF94/Chemical/UFF as examples). Figure from Refs. [7,8].
+图2
+(网络版彩图)机器学习力场构建的一般流程. 从左到
+右, 构建代表性结构的数据库, 使用量子力学方法计算能量
+和力, 建立局部原子环境并以回归任务的方式学习势能面.
+图片来自文献[12]
+Figure 2
+(Color online) General workflow for constructing machine
+learning force fields (MLFF). From left to right: construction of a
+database of representative structures, calculation of energies and forces
+via quantum mechanical methods, and learning potential energy
+surfaces through regression tasks based on local atomic environments.
+Figure from Ref. [12].
+中国科学: 化学
+2025 年
+第55 卷
+第6 期
+1735
+
+
+=== 第 3 页 ===
+(3) 缺乏显式物理表达式导致模型可解释性降低, 这对
+复杂体系的机理解析形成挑战.
+这些特性决定了
+MLFF在精度、效率和普适性方面的独特定位.
+2.1
+对称性约束
+机器学习算法的训练通常只要构建输入和输出的
+映射关系即可, 但针对作用于真实物理体系的MLFF
+必须满足物理守恒定律的约束. 因此, MLFF需要引入
+对称性约束来确保预测在物理上的合理性. 这通常包
+括以下关键对称性.
+(1) 平移旋转对称性: 包含平移不变性(刚性位移
+不影响势能)和旋转不变性(刚性转动不改变相互作
+用). 这可通过使用相对坐标(为每个原子建立局部环
+境坐标系)与原子间的径向距离来实现;
+(2) 置换对称性: 相同类型的原子(如氧原子)在交
+换位置后, 势能保持不变. 可通过排列不变的描述符或
+显式定义原子贡献的加和来满足;
+(3) 能量连续性: 势能面需满足二阶导数连续, 确
+保能量和原子力的光滑性;
+(4) 能量保守性: 总能量是恒定的(沿闭合路径所
+做的功为零), 即原子力必须由势能梯度的负值定义.
+如图3b所示, 通过引入对称性约束后, MLFF模型
+的能量和力的精度都提升了一个数量级
+[15,16]. 这种改
+进可能源于对称性约束有效缩减了模型假设空间, 将
+参数优化限制在物理可行的函数子集内, 提升数据利
+用效率与模型精度.
+从理论层面分析, 诺特定理(Noether’s theorem)为
+对称性约束提供了数学基础: 时间平移不变性对应能
+量守恒, 空间平移不变性对应动量守恒, 旋转不变性
+对应角动量守恒
+[6]. 特别地, MLFF通过强制原子力与
+势能梯度严格对应, 不仅满足能量守恒, 还确保分子动
+力学模拟中热力学量的正确演化, 这对计算扩散系
+数、黏弹性等动态特性至关重要[17].
+2.2
+等变性
+除2.1节所述基本对称性约束外, 在描述三维原子
+体系时, 必须考虑力、偶极矩等矢量或张量属性在坐
+标旋转下的等变性要求. 因此, 有必要引入关于等变
+性的描述: 若函数f
+X
+Y
+:
+对群G是等变的, 则满足
+f D
+g x
+D
+g f x
+g
+G
+x
+X
+(
+[ ] ) =
+[ ] ( ),  
+,   
+ 
+(1)
+X
+Y
+其中, D
+g
+[ ]
+X
+和D
+g
+[ ]
+Y
+分别为群G的元素g在空间X 和Y
+中的表示. 若D
+g
+[ ]
+Y
+为恒等算子, 则f 是不变函数. 如果
+两个函数f和h都是等变的, 那么它们的复合函数也是
+等变的[18]:
+h f D g x
+h D g f x
+D g h f x
+( ( ( ) )) = ( ( ) ( )) =
+( ) ( ( ))
+(2)
+针对三维空间的粒子系统, 主要讨论的是包含旋
+转变换和反射变换的三维正交群O(3), 或仅含旋转变
+换的三维特殊正交群SO(3). 但实际中, 考虑到机器学
+习力场对平移变换的需求, 许多文章为准确描述, 会采
+用包含平移、旋转和反射的欧几里得群E(3)的表述.
+为实现上述旋转等变的性质, 许多等变的MLFF
+被提出, Huang等
+[19]将目前的方法分为三类: 不可约表
+示、正则表示和标量化方法. 其中, 不可约表示方法主
+要基于SO(3)群的不可约表示的基函数——球谐函数,
+表1
+经验力场和机器学习力场的区别[13]
+Table 1
+The differences between molecular mechanics vs. machine learning force fields [13]
+Molecular mechanics (MM)
+Machine learning force fields (MLFF)
+Genesis
+McCammon, Gelin, and Karplus (1977)
+Behler and Parrinello (2007)
+Runtime Complexity
+O(N)
+O(N)
+Speed
+>1 μs/day
+around 1 ns/day
+Accuracy
+>1 kcal/mol
+(1 kcal/mol for small molecules
+Stability
+Usually guaranteed
+Not guaranteed
+Topology
+Usually required
+Usually not required
+Force differentiation
+Analytical
+Autograd
+Parametrization
+Human-derived
+Automated
+Customization
+Difficult
+Trivial
+胡俊宝等: 机器学习力场: 跨学科应用中的前沿进展与技术挑战
+1736
+
+
+=== 第 4 页 ===
+以及球谐函数的张量积运算. 此类方法具有优秀的表
+达能力和广泛的应用范围, 已成为高阶等变MLFF的
+通用理论框架. 正则表示法则通过将输入信息映射到
+高维李代数空间实现群表示, 但相关研究进展相对有
+限. 标量化方法则基于向量信息的等变性质, 通过向
+量与标量信息的交替转化构建等变模型. 此方法虽实
+现简便, 但在数据利用效率方面通常弱于不可约表示
+方法.
+2.3
+消息传递神经网络
+近年来, 图神经网络(特别是消息传递框架)在机
+器学习领域展现出显著的研究价值. 针对原子或分子
+体系, 将分子结构映射为图的建模方法已形成广泛共
+识
+[20]. 在该方法中, 原子被定义为图节点, 而化学键或
+原子间相互作用被表征为边连接, 为机器学习力场模
+型的构建提供了有效的数学框架. 以蒽分子的氢原子
+化学环境识别为例, 通过两次消息传递结合简单平均
+算法即可实现不同化学环境的氢原子分类(图4)
+[21]. 基
+于该理论框架, 目前研究者已开发出多个优秀的机器
+学习力场模型, 包括SchNet
+[22]、DTNN
+[23]、ComE-
+Net
+[24]、NequIP
+[25]和MACE
+[26]等.
+从数学形式上, 消息传递框架通过迭代节点与边
+图3
+(网络版彩图) (a) 三维原子系统的物理对称性表征. 势能在原子置换及空间旋转操作下具有不变性; 原子类型分布仅对
+置换操作敏感, 其排列随置换操作发生变换; 原子坐标则受置换和旋转(以及平移)三类操作的影响. (b) 对称性约束对原子系
+统建模的精度影响. 红色曲线表示引入对称性处理的模型预测结果, 蓝色曲线对应未考虑对称性约束的基准模型. 结果表明,
+合理的对称性处理能显著提升模型的测试精度. 图片来自文献[15,16]
+Figure 3
+(Color online) (a) Physical symmetry characterization of three-dimensional atomic systems. The potential energy remains invariant under
+atomic permutations and spatial rotations; atom type distributions are sensitive only to permutations, whose arrangements transform under such
+operations; atomic coordinates are affected by permutations, rotations, and translations. (b) Impact of symmetry constraints on modeling accuracy. Red
+curves represent predictions of models with symmetry considerations, while blue curves correspond to baseline models without such constraints.
+Results demonstrate that symmetry-aware models significantly improve test accuracy. Figure from Refs. [15,16].
+中国科学: 化学
+2025 年
+第55 卷
+第6 期
+1737
+
+
+=== 第 5 页 ===
+的特征更新实现信息传播. 具体而言, 每个计算周期包
+含两个关键步骤: (1) 基于当前边状态与边的节点特征
+计算消息信息; (2) 通过聚合邻域的消息信息与原始节
+点特征得到新的节点特征[20]. 该过程可通过如下数学
+形式描述:
+m
+h h e
+=
+(
+,
+,
+)
+(3)
+ij
+m
+i
+j
+ij
+h
+m
+h
+=
+,
+(4)
+i
+h
+j
+N i
+ij
+i
+( )
+其中, h i代表i原子特征, h i代表更新后的i原子特征,
+eij代表原子i和原子j的边特征, m ij代表..原子和原子的
+消息信息, 表示原子的所有邻居原子的索引信息, 和为
+可学习的函数.
+2.4
+力场模型发展与分类
+机器学习力场的研究进展一般追溯至2007年Beh-
+ler和Parrinello
+[27]提出的高维神经网络势能(HDNNP)
+架构. 该开创性工作将体系总势能分解为各原子贡献
+的叠加, 其中每个原子的能量由其化学类型及局部化
+学环境(邻居原子的空间位置与元素组成)所决定, 并
+通过神经网络实现预测(图5a). 这一框架奠定了后续
+机器学习力场发展的基础.
+国际上, 机器学习力场领域涌现出多个具有代表
+性的研究体系. 剑桥大学Csányi团队开发的SOAP
+[28]、
+MACE
+[26]等系列方法; 德国波鸿鲁尔大学Behler团
+队
+[29]进一步更新迭代了多代HDNNP框架; 以及柏林
+工业大学Müller团队[22]提出的SchNet模型. 近年来, 哈
+佛大学Kozinsky团队提出的NequIP
+[25]和Allegro
+[30]等
+变框架、德州农工大学姬水旺团队开发的ComE-
+Net
+[24]与HIENet
+[31]架构, 以及洛桑联邦理工学院Ceriot-
+ti团队[32]构建的长程等变LODE描述符等创新性成果,
+进一步推动了领域发展. 值得注意的是, 微软亚洲研究
+院
+[33]近期在Nature正刊报道的AI2BMD框架, 标志着
+人工智能技术在力场开发与应用方面取得突破性
+成果.
+国内研究团队也取得众多进展: 深势科技团队(鄂
+维南、张林峰等)开发的DeePMD
+[34]模型及DPGEN
+[35]
+采样软件, 在材料模拟领域获得广泛应用; 上海人工智
+能实验室[36]通过引入掩蔽-去噪-对比学习预训练技术
+提升力场性能; 中国科学院化学研究所江剑团队
+[37,38]
+针对有机高分子等体系提出了多尺度高阶等变模型与
+物理嵌入神经网络等方法; 复旦大学刘智攀团队
+[39]针
+对催化体系开发的LASP软件;
+北京大学高毅勤团
+队
+[40]与华为等联合研发的侧重蛋白质领域的Mind-
+SPONGE; 中国科学院物理研究所刘淼团队
+[41]的无机
+材料体系的GPTFF框架. 此外, 还有字节跳动团队[42]
+的适用于电解质BAMBOO力场与渤海大学樊哲勇团
+队
+[43]基于CUDA开发的高性能GPUMD框架等.
+根据模型架构特征, 现有机器学习力场可分为三
+图4
+(网络版彩图) (a) 消息传递机制的效果演示, 以蒽分子
+为例. 黄色和深蓝色分别代表氢和碳; (b, c) 执行一次和两次
+消息传递机制(对中心原子的颜色和所有成键的邻居原子的
+颜色取平均)的结果. 图片来自文献[21]
+Figure 4
+(Color online) Demonstration of message passing mechan-
+isms using anthracene as an example. (a) Yellow and dark blue balls
+denote hydrogen and carbon atoms, respectively; (b, c) results after one
+and two message passing steps, respectively, where colors of central
+atoms and bonded neighbors are averaged. Figure from Ref. [21].
+胡俊宝等: 机器学习力场: 跨学科应用中的前沿进展与技术挑战
+1738
+
+
+=== 第 6 页 ===
+类演化阶段(图5b)[44]: 严格局部化模型、消息传递模
+型(含不变模型与等变模型)及通用大模型. 通过对
+图5b的系统分析可以发现, 机器学习力场领域呈现出
+三个显著的发展趋势.
+(1) 模型架构呈现从严格局域化向消息传递框架
+过渡的趋势. 受早期高维神经网络势能框架的启发,
+出现许多改进描述符的局部模型SOAP
+[28]、ANI
+[45]和
+DeePMD
+[34]等, 其中原子团簇扩展
+[46](atomic cluster ex-
+pansion, ACE)方法值得关注, 该方法在预测精度、计
+算效率和泛化能力方面均具备出色的表现与理论保
+障
+[47,48]; 其次, 将神经网络换成核方法的工作具备少数
+据量下较好的精度, 如sGDML
+[49]和FCHL
+[50]等模型. 然
+而, 基于消息传递框架的MLFF在预测精度方面展现
+出显著优势, 并逐渐成为主流研究方向, 如DTNN
+[23]、
+SchNet
+[22]和MACE
+[26]等模型. 但这类框架在大规模
+GPU并行计算时面临效率瓶颈问题, 具体分析将在第
+4节展开讨论.
+(2) 在消息传递框架内, 存在着从不变性到等变性
+设计的范式转变. 早期模型主要采用旋转与平移的不
+变性架构, 而近年来具有严格SE(3)等变性的高阶等变
+模型, 以超高的数据效率和良好的泛化能力, 逐渐成为
+研究热点.
+(3) 通用MLFF的构建同样成为新兴研究的热点.
+随着多任务学习与迁移学习技术, 以及公开数据库的
+发展, 研究人员致力于开发具有广泛适应性的MLFF,
+具备开箱即用和跨体系等的独特优势.
+从MLFF模型的最大张量阶数的视角分析, 现存
+的机器学习力场模型可分为以下三大类: 其一为仅有
+标量特征( 即零阶) 的不变神经网络方法,
+涵盖
+SchNet
+[22]、DeePMD
+[34]、DTNN
+[23]、PhysNet
+[51]、Co-
+mENet
+[24]和SphereNet
+[52]等; 其二为具备向量特征(即
+一阶) 的等变神经网络方法,
+包括E G N N [ 5 3 ] 、
+图5
+(网络版彩图) (a) 机器学习力场的基本架构: 体系内各原子的能量贡献由其元素属性及局域化学环境(邻近原子的空间
+坐标及元素种类)共同决定, 并通过神经网络等方法计算得到. 体系总势能遵循加和性原则, 即所有原子能量的贡献的加和构
+成系统总势能. (b) 模型架构的演化: 严格局部化模型、不变模型、等变模型和通用大模型, 分别用红色、绿色、蓝色和紫色
+标记. (c) 张量积计算示意图: 左上方和右上方分别为两组输入的球谐函数, 底部为经过Clebsch-Gordan系数耦合后的球谐函数
+组合. 蓝色连接代表路径. 图片来自文献[18,44]
+Figure 5
+(Color online) (a) Fundamental architecture of machine learning force fields: the atomic energy contribution within a system is determined
+by both elemental properties and local chemical environments (spatial coordinates and elemental types of neighboring atoms), which are
+computationally resolved via neural network algorithms. The total potential energy adheres to the principle of additivity, whereby the summation of all
+atomic energy contributions constitutes the total potential energy of the system. (b) Evolution of model architectures: strictly localized models,
+invariant models, equivariant models, and foundation models, labeled in red, green, blue, and purple, respectively. (c) Schematic diagram of tensor
+product calculation: the upper-left and upper-right sections correspond to the spherical harmonic function inputs of the two components, respectively.
+The lower section represents the combined output of spherical harmonics coupled via Clebsch-Gordan coefficients. Blue connections denote the
+pathways linking the inputs to the output. Figure from Refs. [18,44].
+中国科学: 化学
+2025 年
+第55 卷
+第6 期
+1739
+
+
+=== 第 7 页 ===
+PaiNN
+[54]、GVP-GNN
+[55]、EQGAT
+[56]等, 以及高阶特
+征(即超过一阶)的等变神经网络方法, 诸如TFN
+[57]、
+Cormorant
+[58]、SEGNN
+[59]、Equiformer
+[60]、Ne-
+qulP[25]、Allegro[30]、BotNet[61]和MACE[26]等. 具体而
+言, 不变神经网络方法直接运用不变几何特征(例如距
+离和角度)作为输入, 确保对输入分子的旋转和平移变
+换具有不变性. 相比之下, 等变模型在旋转和平移等特
+定变换下能够维持某些对称性或性质
+[62]. 在各类公共
+数据集和测试中, 等变模型方法通常优于不变模型方
+法
+[25,53,63,64]. 此外, 从几何图神经网络的表达能力考察,
+高阶等变模型则比一阶等变模型展现出更强的表达能
+力[65], 且增加等变的阶数通常会提升模型精度[18,26,66].
+因此, 高阶等变模型在机器学习力场领域的多个评估
+指标上取得了显著优势
+[64], 如预测精度、模拟稳定
+性、数据效率和扩散系数等指标, 特别是相比于以往
+的机器学习力场模型具备1000倍的数据效率的提
+升
+[25,30]. 这对于依赖高成本的量子化学方法来生成训
+练数据集的机器学习力场领域影响深远. 因此, 高阶
+等变模型架构在近两年受到了广泛关注.
+当前高阶等变模型主要基于e3nn框架实现. 作为
+E(3)等变神经网络的通用实现工具, e3nn能够有效处
+理三维空间中的几何结构(如点、体素、网格或表面)
+及几何张量(如矢量场、应变场)等复杂对象. 该框架
+的核心数学基础建立在满足旋转等变性的张量积(ten-
+sor product)与球谐函数(spherical harmonics)上, 并可组
+合形成更复杂的等变模块[18].
+球谐函数与张量积的数学表达式分别如下:
+f
+Y
+r
+r
+=
+|| ||
+(5)
+L
+L
+( )
+( )
+f
+f
+f
+C
+f
+f
+= (
+)
+=
+(6)
+m
+L
+L
+L
+m
+m
+L
+L
+m
+L
+L
+L m
+L
+m
+L
+m
+m
+L
+m
+L
+3,
+(
+)
+1
+(
+)
+1
+(
+)
+=
+=
+(
+,
+)(
+,
+)
+(
+,
+)
+1,
+(
+)
+2,
+(
+)
+3
+3
+1
+2
+3
+1
+1
+1
+2
+2
+2
+1
+1
+2
+2
+3
+3
+1
+1
+2
+2
+其中, r为相对向量, L代表球谐函数阶数, m代表球谐
+函数的方向信息,
+代表张量积操作, f的下标1, 2和3
+分别指代两个输入的球谐函数与输出的球谐函数,
+C L m
+L
+m
+L
+m
+(
+,
+)(
+,
+)
+(
+,
+)
+1
+1
+2
+2
+3
+3
+为Clebsch-Gordan系数, 该系数实现不同阶
+数特征的球谐函数的耦合, 并仅与输入的球谐函数与
+输出的球谐函数的参数(L,m)唯一确定. 此外, 张量积
+运算需满足以下约束条件:
+L
+L
+L
+L
+L
+p
+p p
+|
+|
++
+=
+(7)
+1
+2
+3
+1
+2
+3
+1
+2
+其中, p代表奇偶性(1为偶数, −1为奇数). 由此可知, 新
+生成的球谐函数的阶数L3需满足于L1和L2的三角不等
+式约束, 而奇偶性由输入函数奇偶性的乘积决定.
+对于任意的输入向量r和旋转群G的元素g操作,
+球谐函数与张量积都满足等变性:
+D g Y
+Y
+D
+g
+D
+g
+r
+r
+r
+r
+( )
+|| || =
+( )
+||
+( ) ||
+(8)
+L
+L
+L
+X
+X
+( )
+( )
+(
+) (
+)
+(
+)
+D g f
+D g f
+D g f
+f
+( )
+( )
+=
+( )
+(9)
+L
+L
+L
+L
+L
+L
+L
+1
+(
+)
+2
+(
+)
+1
+(
+)
+2
+(
+)
+1
+2
+1
+2
+其中, D g
+( )
+L
+和D
+g
+( )
+X
+分别为元素g在球谐函数空间与笛
+卡儿空间的矩阵表示. 前者为Wigner-D矩阵, 后者为旋
+转矩阵.
+在e3nn框架中, 球谐函数的奇偶性通过字符e(偶)
+与o(奇)标注, 阶数则以数字直接表示. 例如, 两个一阶
+奇函数的球谐函数组合表示为1o+1o, 而一个零阶偶
+函数与一个一阶奇函数的球谐函数组合则标记为0e
++1o. 上述组合执行张量积运算时(指定输出球谐函数
+为0 e + 1 o 类型) ,
+可产生4 条独立路径( 通道) :
+1o×0e→1o、1o×1o→0e、1o×0e→1o和1o×1o→0e, 如
+图5c所示.
+高阶等变MLFF尽管在数据效率和预测精度方面
+表现卓越, 但在大规模分子模拟仍面临显著挑战. 实验
+表明, 在单GPU环境下, 高阶等变模型(MACE模型)对
+上千原子体系的模拟速度仅为2.5 ns/d
+[30,67]. 这主要受
+限于张量积的高昂的计算复杂度(O L
+(
+)
+6 )
+[68].
+针对高阶等变模型的速度瓶颈, 研究者们相继提
+出多种优化策略,
+如将SO(3)的卷积与张量积简化
+为SO(2)的操作的eSCN
+[68]模型; 合理减少张量积通道
+的SO3krates
+[69]模型; 通过混合不变与等变架构平衡精
+度与效率的HIENet
+[31]模型, 以及利用快速傅里叶变换
+计算由二维傅里叶基表示的Gaunt张量积方法
+[70]来替
+代原始的张量积等. 此外, 江剑等
+[37]基于有机体系存
+在的分子内与分子间相互作用的特征, 采用高阶等变
+模块与低阶等变模块组合的多尺度方法, 实现了更好
+的精度与显著的加速效果.
+此外, 将物理先验知识嵌入机器学习模型有望增
+强模型的泛化能力与可解释性, 并成为热门的研究方
+向. 目前, 物理嵌入策略在MLFF中的实现路径呈现多
+胡俊宝等: 机器学习力场: 跨学科应用中的前沿进展与技术挑战
+1740
+
+
+=== 第 8 页 ===
+元化特征. Mishin等
+[71]将解析键序势与神经网络相结
+合, 显著提升了模型外推能力. Gao和Remsing
+[72]提出
+自洽神经网络架构, 将短程相互作用建模为神经网络
+学习项, 而长程相互作用则由物理方程显式描述, 该
+方法有效平衡了模型表达能力与物理合理性. 中国科
+学院化学研究所江剑团队
+[38]通过提出一系列协同策
+略耦合已有的物理规则和机器学习框架, 构建了同时
+满足严格物理约束和高效数据学习能力的物理嵌入机
+器学习模型, 实现了对复杂体系微观相互作用与宏观
+热力学性质的多尺度精准预测. 这些研究共同表明,
+物理约束的引入不仅作为归纳偏置抑制模型过拟合,
+更能有效规避非物理现象的产生, 从而提升模型的泛
+化性能. 在模型的可解释性研究方面, 近期涌现许多
+代表性工作. Propelier等
+[73]构建了具有理论可解释性
+的物理嵌入型机器学习力场框架, 该框架通过融合量
+子化学拓扑理论与高斯过程回归方法, 实现了对分子
+体系势能面的物理可解释建模. Bilbrey等
+[74]基于可解
+释性图论描述符(包括平均最短路径长度及节点度分
+布等特征), 系统揭示了化学拓扑结构在训练集与测试
+集之间的分布差异, 证实化学拓扑特征的完备性对构
+建有效训练集具有重要影响. Meta基础人工智能研究
+院
+[75]采用t-SNE算法对预训练模型的节点特征与边信
+息进行降维可视化, 实验结果证实预训练策略能有效
+提升模型对异构数据特征的区分能力. 南京大学马晶
+课题组
+[76]基于注意力机制解析模型对不同元素的重
+要性评估, 通过量化评估原子间相互作用的注意力权
+重, 显著增强了模型的透明性与可解释性.
+3
+基于主动学习策略的高效数据收集方法
+得益于深度机器学习算法卓越的拟合能力, 当前
+MLFF已能高精度复现量子化学计算结果. 然而, 作为
+数据驱动的MLFF方法决定了其泛化能力受限于训练
+数据集的质量与覆盖范围. 当输入的新样本结构显著
+偏离训练集分布时(典型示例如有机分子体系中共价
+键键长显著偏离平衡键长的非平衡态体系), 模型将面
+临外推失效风险, 产生错误的预测, 最终导致分子动力
+学模拟中的结构崩溃现象(详见4.1节讨论). 这凸显出
+训练集的构建在MLFF训练中的关键性与重要性
+[77].
+训练集的构建往往需要考虑两个关键问题: 完备性与
+紧凑性. 完备性要求训练数据集尽可能完整地对化学
+空间进行采样, 以增强MLFF的泛化能力; 紧凑性要求
+训练数据应该是采样结构的最小子集, 从而减少数据
+的冗余性. 这对于减少高成本的DFT计算时间是有必
+要的. 不同的方法已经被用于对化学结构空间进行采
+样, 包括MD模拟、遗传算法, 增强采样以及主动学习
+等
+[14]. 其中, 主动学习技术已成为一种普遍策略, 尤其
+以委员会查询的主动学习技术在构建机器学习力场模
+型的高精度的量子化学数据领域尤为突出
+[35,78,79].
+基于委员会查询的主动学习技术的核心思路是利
+用委员会的分歧来量化泛化误差
+[80]. 具体来说, 如果
+训练数据集的覆盖范围足够多, 在不同随机种子条件
+下得到的机器学习力场模型, 对新的分子结构往往能
+够进行准确预测, 即预测结果的方差较低. 反之, 若预
+测结果的方差过高, 则表明训练数据集不完备, 新的分
+子结构需要进行量子化学计算并添加到训练数据
+集中.
+一般以不同随机种子得到的机器学习力场模型的
+原子力的预测值的最大方差, 作为评判指标. 在实际情
+形中, 拥有过高或过低的评判指标的新分子结构都会
+被舍弃, 即存在一个评判指标的上限与下限. 倘若评
+判指标超出上限, 则意味着新的分子结构或许存在异
+常. 将其纳入训练数据集会对机器学习力场模型的训
+练产生不利影响, 且没必要. 极低的评判指标表明训
+练数据集已经覆盖新的分子结构, 无需再加入到训练
+数据集中. 因此, 在主动学习技术执行采样时, 只会将
+评判指标分布在合适的范围内的新分子结构增加到训
+练数据集中, 从而实现低冗余的增加训练数据集. 此流
+程如图6所示, 以镁铝合金体系为例, 通过主动学习方
+法进行训练数据集的自适应采样, 共计探索了约6.5亿
+个新结构, 但只有0.0044%的候选结构被选中, 从而实
+现数据集的完备且紧凑地收集, 并显著降低高精度量
+子化学计算的数据生产成本
+[81].
+近年来, 研究者提出了多种改进的主动学习框架.
+其中, 不确定性驱动动态主动学习(UDD-AL)通过动态
+调节势能面偏置, 使得MD向不确定性较高的化学空
+间探索, 显著提升了采样效率. 该方法在甘氨酸构象
+空间探索和乙酰丙酮质子转移过程模拟中表现出显著
+优势, 特别是在常规动力学采样难以触及的化学相关
+区域展现出卓越的构型捕获能力
+[82]. 另一创新方法
+FLARE框架则基于高斯过程回归模型, 通过实时评估
+原子局部环境与训练集的差异度, 自主决策是否触发
+中国科学: 化学
+2025 年
+第55 卷
+第6 期
+1741
+
+
+=== 第 9 页 ===
+量子化学计算. 该技术成功实现了快速晶体熔化和稀
+有扩散事件的精确模拟, 为原子尺度稀有事件的动力
+学研究提供了新范式
+[83,84]. 此外, 主动学习技术结合
+高阶等变MLFF也展示出极强的数据效率, 仅需要几
+百份数据样本即可实现高质量的有机体系的数据集收
+集
+[37].
+4
+分子模拟应用
+MLFF已在合金、电池及燃烧体系等材料领域展
+现出广泛的适用性[14]. 然而, 其在有机体系中应用时,
+仍面临部分挑战. 这一局限性主要源于有机化合物特
+有的结构特征: 体系中不仅存在强相互作用的各向
+异性共价键, 还包含以范德华力为主的弱分子间相
+互作用, 从而极易引发分子动力学模拟过程中的结构
+崩溃与密度发散现象[85]. 此外, 在大规模并行计算场
+景下, 消息传递框架存在着严重的并行效率低下的问
+题
+[30,86].
+4.1
+模拟结构崩溃问题
+在基于MLFF的分子模拟的迭代过程中, 长时间
+的分子模拟可能会探索到新的分子结构. 然而, 机器
+学习方法的泛化能力欠佳, 且有机体系中共价键对位
+置变化非常敏感. 这导致MLFF针对新的有机分子中
+共价键部分的相互作用产生明显偏差, 该偏差会在分
+子模拟过程中持续累积, 进而引发整个模拟体系的崩
+溃
+[64]. 如图7所示, 基于MLFF模型的丙氨酸分子的长
+时间分子模拟演示, 在第3704 fs时, 出现了碳原子和
+氢原子过度紧密, 甚至几乎重叠的现象. 由于偏差的
+累积, 在随后的分子模拟的迭代中出现了整个模拟体
+系的非物理结构的崩溃现象.
+针对这一关键挑战, 近期研究提出了若干创新性
+解决方案. 微软亚洲研究院
+[87]通过创新性地设计多维
+度的力误差评估指标, 优化了损失函数构建. 该方法
+整合质量归一化的最大力误差、构象簇力误差和元素
+种类力误差, 在不增加训练数据量的前提下, 改善了
+MLFF在长时间的MD的模拟稳定性. 上海人工智能实
+验室[36]提出了双级自我监督学习方法. 该方法利用全
+局结构和原子局部环境信息来使模型与测试数据保持
+一致. 在全局结构上, 对原子坐标施加噪声, 并基于力
+场模型输出的原子特征构建噪声强度分类器, 利用自
+监督的方式增强模型预测值的平滑性; 在原子局部环
+境上, 通过对原子种类使用掩码, 并让模型推测正确
+的原子种类和原子力信息, 从而实现局部信息提取.
+最后在测试集上, 最小化自监督学习损失来适应测试
+样本. 广泛的实验表明, 该框架能够在没有额外数据
+的情况下弥合训练数据集和测试数据集之间的分布偏
+移问题, 从而改善模拟稳定性. 中国科学院化学研究所
+江剑团队
+[37]提出了动态键长拉伸方法. 该方法基于分
+子模拟轨迹进行键长的扰动, 并对键角和二面角进行
+了充分采样. 研究表明, 动态键长拉伸方法具备极强
+的鲁棒性和普适性, 能够大幅提升MLFF在长时间模
+图6
+(网络版彩图)主动学习方法的迭代示意图, 以Al-Mg
+系统为例. (a.1) 准备多种晶体结构分布的初始结构; (a.2) 给
+定温度下的规范模拟. 温度在50~2000 K范围内随迭代次数
+增大而升高. (b) 对采样器挑选出的结构使用量子化学软件
+进行计算(标定). (c) 使用MLFF模型进行训练. 图片来自文献
+[81]
+Figure 6
+(Color online) Iterative workflow of active learning methods
+(Al-Mg system example). (a.1) Initial structure preparation: diverse
+crystal configurations. (a.2) Canonical simulation under temperatures
+from 50 to 2000 K, exponentially increasing with iterations. (b) Selected
+structures undergo quantum chemical calculations (calibration). (c)
+Training using MLFF models. Details refer to the original text. Figure
+from Ref. [81].
+胡俊宝等: 机器学习力场: 跨学科应用中的前沿进展与技术挑战
+1742
+
+
+=== 第 10 页 ===
+拟中的稳定性.
+4.2
+弱相互作用
+在有机体系的分子动力学模拟中, 分子间弱相互
+作用(如范德华力和氢键)对宏观性质具有决定性影响.
+相关研究表明, 密度、黏度和介电常数等关键物性参
+数与分子间相互作用呈现显著相关性
+[85]. 然而, 在有
+机体系中, 共价键主导的分子内相互作用强度远高于
+分子间相互作用. 这种物理本质的差异性对MLFF训
+练产生系统性偏差: 以损失函数最小化为目标的数据
+驱动方法, 会优先拟合主导性强的分子内相互作用,
+而忽视对总能量贡献较小但宏观效应显著的分子间作
+用. 文献研究表明, 这种偏差会导致等压-等温(NPT)系
+综模拟中出现非物理的密度崩溃现象, 具体表现为异
+常气泡形成和密度值系统性偏离实验值, 如图8所示.
+近期研究揭示了改进分子间相互作用力建模的多
+种策略: (1) 模型训练方法创新: 如字节跳动团队[42]开
+发的集成学习与知识蒸馏框架, 并通过密度对齐策略
+建立微观作用与宏观性质的映射关系, 在多种电解质
+体系的关键物性预测中展现出优异迁移性与准确度;
+(2) 后处理方法: 结合色散校正技术(DFT-D3/D4)提升
+范德华作用描述精度, 但受限于训练集偏差, 其改进效
+果存在体系的依赖性
+[88]; (3) 误差分解机制: 如MACE-
+OFF23模型通过多种模型参数的分子间与分子内的误
+差分离发现, 中型以上模型可显著降低分子间力预测
+误差, 而短截止半径易导致密度系统性高估
+[67].
+值得注意的是, 远程非共价相互作用的准确描述
+仍是MLFF的共性难题, 在界面体系模拟中需特别谨
+慎
+[77].这些研究表明, 开发精确描述不带电或极性较弱
+的分子体系的弱相互作用的通用建模框架,
+仍是
+MLFF领域的关键问题.
+4.3
+大规模模拟与GPU并行
+近年来, 机器学习力场在大规模分子动力学模拟
+领域取得显著突破. DeePMD团队[89]率先于Summit超
+算平台采用27360块V100 GPU, 实现了约10亿原子规
+模的分子动力学模拟, 该成果荣获2020年Gordon Bell
+奖. 随后, SNAP团队
+[90]通过算法优化将模拟规模提升
+至200亿原子. FLARE团队
+[91]进一步突破技术瓶颈, 将
+原子体系扩展至0.5万亿级别. 这些突破性进展为机器
+学习力场在大规模复杂体系中的长时间分子模拟奠定
+了坚实基础.
+现有大规模模拟研究主要基于严格的局部模型与
+LAMMPS软件框架. 然而, 具有更高精度的消息传递
+框架在大规模并行化方面面临显著挑战. 以LAMMPS
+为代表的分子动力学软件通常采用域分解算法(或称
+空间分解算法)来实现并行计算. 该算法依据短程相
+互作用特性将体系按空间划分至各GPU计算单元(如
+图9b所示, 每个黑色块区域代表单个GPU计算单元),
+图7
+(网络版彩图)丙氨酸分子结构发生崩溃现象的示意图. 在第3704 fs时, 圆圈内的碳氢原子发生重叠现象, 进而导致后续
+的分子模拟崩溃. 其中t代表模拟时长. 图片来自文献[64]
+Figure 7
+(Color online) Schematic of alanine collapse phenomenon. At 3704 fs, overlapping of carbon-hydrogen atoms (circled) triggers subsequent
+simulation collapse. t denotes simulation time. Figure from Ref. [64].
+图8
+(网络版彩图)碳酸乙烯酯和碳酸甲乙酯的二元溶剂体
+系在NPT系综下自发形成气泡(绿色阴影), 进而导致密度崩
+溃现象示意图. 图片来自文献[85]
+Figure 8
+(Color online) Ethyl carbonate and methyl ethyl carbonate
+binary solvent system forming bubbles (green shaded regions) under
+NPT ensemble, leading to density collapse. Figure from Ref. [85].
+中国科学: 化学
+2025 年
+第55 卷
+第6 期
+1743
+
+
+=== 第 11 页 ===
+从而实现“大化小”的并行计算. 为满足周期性边界条
+件需求, 需在区域边界设置虚拟原子(ghost atoms), 如
+图9b绿色虚线区域. 然而, 消息传递框架的交互层的层
+数增长会导致模型的感受野扩大(图9a). 在三维空间
+中, 这会导致虚拟原子数量随层数呈立方级增长. 这
+种冗余计算显著增加了GPU并行计算的负担, 实际计
+算量远超原始体系原子数目. 例如, MACE模型在单
+GPU测试中, 当体系原子数分别为192、1536和5184
+时, 采用域分解策略的运算效率较非域分解策略分别
+降低至原效率的1/9、1/7和1/3(如图9c的黑线与孤立
+彩色点的对比)
+[67].
+首尔大学提出的SevenNet[86]框架通过实时交换每
+层交互层的数据结果的通信策略, 成功抑制了感受野
+扩张问题, 但该方案高度依赖计算集群的通信能力与
+具体模型的LAMMPS插件定制化. 此外, 尽管大规模
+并行技术可有效扩展模拟体系的规模, 但模型本身的
+计算效率仍制约着模拟速度. 因此, 开发兼具高精
+度、高效计算与高并行效率的MLFF算法, 仍然是超
+大规模体系模拟研究的重要科学问题与技术挑战.
+5
+通用大模型
+基础模型(foundation models)在自然语言处理等
+领域的成功经验为MLFF开发提供了重要启示[92]. 当
+前MLFF的开发普遍采用“任务驱动-数据定制”的工作
+流程: 每个特定问题均需从头构建专用数据集, 其数据
+生成过程依赖于高成本的量子化学方法计算. 以Al-
+Mg-Cu三元合金体系的MLFF模型开发为例[93], 其
+141000个训练数据样本共消耗超过1000万CPU小时
+(DFT计算能量与力). 这类“专用型”MLFF虽能在限定
+域内保持较高精度, 但其外推能力受到显著制约, 难
+以应对材料设计中新增元素或复杂热力学条件下的结
+构探索需求. 因此, 创建准确、高度通用的MLFF, 使其
+覆盖比“专用型”MLIP更多的元素和条件, 是非常有价
+值的应用
+[17].
+目前, 不同的学术团体利用以材料工程(Materials
+Project)[94]为代表的公开数据库, 开发了不同领域的
+MLFF大模型, 如图10所示
+[95]. 我们在表2
+[41,94,96~104]汇
+总了部分公开数据库, 并附有数据库的简要描述: 数据
+图9
+(网络版彩图) (a) 消息传递框架的中心原子的邻居数(感受野)随着传递的层数(t)呈立方增长. (b) LAMMPS软件的域分
+解方案示意图: 每个黑色实线方块代表GPU并行中每块GPU处理的原子体系大小. 绿色虚线和蓝色虚线分别为严格局部框架
+和消息传递框架下所需要的虚拟原子范围. (c) 黑色线为单GPU非域分解模式. 彩色线为使用域分解模式, 孤立的彩点表示域
+分解模式的单GPU性能, 蓝色、绿色和橙色线分别代表平均每张GPU恒定192、1536和5184的原子数目的并行模式. 连接的虚
+线代表将单GPU结果(黑色曲线)与双GPU结果连接起来. 图片来自文献[67,86]
+Figure 9
+(Color online) (a) The number of neighboring atoms (receptive field) around a central atom in message passing framework grows cubically
+with layer depth (t). (b) Domain decomposition scheme in LAMMPS: black solid blocks represent atomic systems per GPU; green and blue dashed
+lines denote virtual atom ranges for the strictly localized framework and the message-passing framework. (c) Non-domain decomposition (black) vs.
+domain decomposition (colored) modes. Colored dots indicate single-GPU performance; blue, green, and orange curves correspond to parallel modes
+with constant 192, 1536, and 5184 atoms per GPU. Dashed lines link single- (black line) and dual-GPU results. Figure from Refs. [67,86].
+胡俊宝等: 机器学习力场: 跨学科应用中的前沿进展与技术挑战
+1744
+
+
+=== 第 12 页 ===
+规模、量子化学方法与量子化学计算软件信息, 以及
+数据库包含元素种类的信息. 更详细的数据库资料可
+以查阅近期的综述文章[5,105]. 除表２的公开数据库,
+也有许多优秀的数据集社区平台, 如ColabFit-Ex-
+change平台[106]已经托管了370余种的不同数据集, 涵
+盖1.8亿种分子构型, 并且有源源不断的提交. Quan-
+tum-Machine (quantum-machine.org)平台提供大量的
+量子化学计算数据. AIS-Square (aissquare.com)平台则
+汇总了基于DeePMD模型(主要通过DPGEN软件收集
+的数据集)的多种类型的数据库.
+近年来, MLFF领域的通用大模型在多个体系中
+的性能评估已得到广泛研究. 值得注意的是, 通用大
+模型的表现, 不仅与模型本身架构设计有关, 与使用
+的训练数据集, 模型的参数总量, 以及训练技巧都密
+切相关. 在晶体材料领域, Yu等[107]系统评估了多种
+MLFF通用模型对关键物理性质的预测能力, 包括状
+态方程、结构松弛、形成能及振动特性. 结果显示,
+MACE-MP0在形成能和振动光谱预测中表现最优, 而
+CHGNet和M3GNet在结构优化任务中更具优势. Rie-
+besell等
+[104]基于无机晶体体系的热力学稳定性预测的
+测试集分数, 将模型按性能排序为: EquiformerV2 +
+DeNS > Orb > SevenNet > MACE-MP0 > CHGNet >
+图10
+(网络版彩图)以材料项目(Materials Project)为代表的公开数据库提供了丰富的数据, 不同的学术团体利用这些数据探
+索不同领域的MLFF大模型. 图片来自文献[95]
+Figure 10
+(Color online) Public databases like the Materials Project provide data for academic groups to explore MLFF large models across
+disciplines. Figure from Ref. [95].
+表2
+简要概述部分公开数据集. 部分数据来自文献[5,105]
+Table 2
+Introduction to selected public datasets. Data from Refs. [5,105]
+Data set
+Description
+Size
+Methods; Software
+Elements
+SPICE[96]
+Small molecules
+peptides, ion pairs
+1.1 M
+ωB97M-D3BJ/def2-TZVPPD;
+Psi4
+H, Li, C, N, O, F, Na, Mg, P,
+S, Cl, Ca, K, Br, I
+ANI-2x[97]
+nonequilibrium small and mid-
+sized organic molecules
+8.9 M
+ωB97X/6-31G*;
+Gaussian 09
+H, N, O, F, Cl
+MD22[98]
+small molecule
+22 k
+PBE+MEB;
+FHI-aims
+C, H, O, N
+QM9
+[99,100]
+small organic molecules
+134 k
+B3LYP/6-31G(2df,p);
+Gaussian 09
+H, C, N, O, F, S, Cl, Br, I
+GEMS
+[101]
+fragments of peptides, proteins
+and water
+2.89 M
+PBE0/def2-TZVPP+MBD;
+Psi4
+H, C, N, O, S
+transition1x[102]
+reactions of different types
+9.6 M
+ωB97X/6-31G(d);
+ORCA
+H, C, N, O
+OC22[103]
+oxide materials, coverages,
+and adsorbates
+9.8 M
+PBE/PBE+U;
+VASP
+H, C, N, O, and 55 metal elements
+Materials Project[94]
+experimentally synthesized and
+hypothetical crystal structures
+172 k
+PBE/PBE+U/r2SCAN;
+VASP
+all of the periodic table
+OMat24[104]
+inorganic bulk materials
+110 M
+PBE/PBE+U/r2SCAN;
+VASP
+all of the periodic table
+Atomly[41]
+inorganic materials
+37.8 M
+PBE; VASP
+most of the Periodic Table
+中国科学: 化学
+2025 年
+第55 卷
+第6 期
+1745
+
+
+=== 第 13 页 ===
+M3GNet等. 在反应路径预测方面, Zhao等
+[108]发现通用
+MLFF模型在过渡态搜索中普遍表现欠佳, 需通过补
+充反应数据集训练提升预测能力. 值得注意的是, 传
+统能量与力的评估指标无法全面反映模型在过渡态搜
+索中的性能, 这提示在扩展模型应用范围时需开展针
+对性基准测试. 此外, 针对有机分子体系, Kovács团
+队
+[67]基于SPICE等公开数据库开发了短程可转移力场
+MACE-OFF, 该模型能够精准预测分子系统的气相和
+凝聚相特性, 包括蛋白质二级结构及振动光谱信息.
+Zhang等
+[17]提出的DPA-2模型则在数据效率与预测精
+度间取得突破, 其预训练版本较从头训练的数据需求
+降低至原需求的1/100, 且在径向分布函数和扩散常数
+等复杂物性预测中表现优异. 总体而言, MLFF领域的
+通用大模型凭借其高迁移性和泛化能力, 已成为原子
+尺度模拟领域的研究热点.
+综合分析表明, 当前MLFF领域的通用大模型在
+材料计算领域已展现出显著优势, 但其发展仍面临若
+干关键挑战. 在模型评估方面, 传统的能量与力的精
+度的单一评估标准亟待发展为包含平衡态结构稳定
+性、反应路径预测和表界面吸附能力等多维度的综合
+评估体系. 在数据库建设方面, 研究重点正从单组分体
+系向多组元体系扩展, 需涵盖缺陷结构及非平衡态等
+结构, 这对训练数据的完备性与多样性提出了更高要
+求. 针对计算效率优化问题, 需通过模型架构创新与
+硬件适配的协同优化, 例如混合精度训练、模型量化
+技术的结合应用, 以及基于CUDA的源码级框架重构
+等策略, 在保证预测精度的同时实现计算效率的突破
+性提升. 上述研究方向的系统性推进, 将为构建高精
+度、高效率的通用MLFF模型提供重要支撑.
+6
+总结与展望
+MLFF在理论建模、算法创新及工程应用方面获
+得突破性进展, 显著推动了MD模拟技术的范式革新.
+当前基于消息传递框架与高阶等变模型框架已展
+现出优越的预测性能与良好的泛化能力
+[64,109], 但其计
+算效率与并行计算能力仍需进一步优化. 为满足大规
+模分子模拟需求, 开发兼具高精度、高效率与优异并
+行能力的MLFF模型仍是当前研究重点.
+数据集质量与模型泛化能力存在显著的相关性.
+尽管主动学习技术已形成较为系统的数据采集范式,
+但非平衡态结构的有效采样仍存在技术瓶颈, 导致训
+练数据的完备性难以满足复杂体系模拟需求. 此外,
+数据集的可靠性检验与质量评估体系尚不完善, 亟待
+建立标准化的数据生产与管理流程, 以提升数据库的
+可复现性、透明度及跨团队协作效率, 从而为MLFF
+模型的开发提供可靠支撑.
+在物理嵌入方面, 尽管已有研究取得阶段性进展,
+但仍存在若干关键瓶颈问题: 首先, 现有物理约束方案
+多局限于特定体系, 缺乏普适性理论框架; 其次, 训练
+过程中的物理引导机制尚未形成系统化方法论; 此外,
+数据驱动与物理约束的动态平衡机制仍需深入探索.
+未来研究应聚焦于构建具有理论保障的通用嵌入架
+构, 开发基于物理先验的主动学习策略, 并建立多尺度
+物理约束的耦合机制, 以推动MLFF在复杂材料体系
+中的应用.
+在MLFF实际应用层面, 仍需突破若干技术瓶颈:
+有机体系在分子动力学模拟中可能出现的结构崩溃与
+密度崩溃问题亟待解决、反应过程的过渡态高效采样
+方法、界面体系的色散力精确表征以及生物大分子体
+系面临的计算效率与构象空间采样等关键技术仍需突
+破. 这些问题的有效解决将显著拓展MLFF在交叉学
+科领域的应用深度与广度.
+软件生态建设需兼顾易用性与可扩展性.
+以
+DeePMD-kit为代表的集成化平台(包含成熟的可大规
+模并行的DeePMD核心模块、易于上手的DPGEN数
+据收集平台, 以及DeepModeling社区支持体系)在功能
+集成度与用户体验方面具有示范价值. 在扩展性方面,
+为不同MLFF模型单独开发完整的软件生态的成本过
+高. 以端到端基于主动学习技术的数据收集软件开发
+为例, 需整合量子化学计算、模型训练、MD模拟采
+样及不确定性量化等多任务模块. 因此, 未来需强化
+软件平台的模块化设计与开源协作机制, 构建可扩展
+的通用开发框架, 从而推动软件生态的协同发展.
+通用大模型虽展现出广阔应用前景, 但其实际部
+署仍需经过严格的验证或针对性微调以提升可靠性.
+此外, 通用大模型虽在计算速度方面超越传统量子化
+学方法, 但其参数量过大的特征导致实际应用效率受
+限. 建议通过轻量化架构设计平衡计算效率与精度,
+或采用数据蒸馏技术构建“大模型生成-小模型模拟”
+的协同范式
+[17], 促进MLFF方法在长时间大尺度分子
+模拟中的实际应用.
+胡俊宝等: 机器学习力场: 跨学科应用中的前沿进展与技术挑战
+1746
+
+
+=== 第 14 页 ===
+作为AI for Science领域的代表性方向, MLFF深度
+融合量子化学、机器学习与分子模拟方法的技术优
+势. 随着多学科交叉创新的持续推进, 该领域将在复杂
+材料体系的模拟与设计中发挥更大作用, 为计算化学
+与材料科学的交叉创新提供全新范式, 推动材料研发
+向智能化、高通量化方向发展.
+参考文献
+1
+Zhang J, Wang X, Zhu Y, Shi T, Tang Z, Li M, Liao G. Comput Mater Sci, 2018, 143: 248–254
+2
+Zhong Z, Du G, Wang Y, Jiang J. Langmuir, 2023, 39: 11081–11089
+3
+Ma L, Zhong Z, Hu J, Qing L, Jiang J. J Phys Chem B, 2023, 127: 5308–5316
+4
+Perilla JR, Schulten K. Nat Commun, 2017, 8: 15959
+5
+Kulichenko M, Nebgen B, Lubbers N, Smith JS, Barros K, Allen AEA, Habib A, Shinkle E, Fedik N, Li YW, Messerly RA, Tretiak S. Chem
+Rev, 2024, 124: 13681–13714
+6
+Unke OT, Chmiela S, Sauceda HE, Gastegger M, Poltavsky I, Schütt KT, Tkatchenko A, Müller KR. Chem Rev, 2021, 121: 10142–10186
+7
+Sauceda HE, Gastegger M, Chmiela S, Müller KR, Tkatchenko A. J Chem Phys, 2020, 153: 124109
+8
+Pyzer-Knapp EO, Pitera JW, Staar PWJ, Takeda S, Laino T, Sanders DP, Sexton J, Smith JR, Curioni A. npj Comput Mater, 2022, 8: 84
+9
+Zhang YW, Sorkin V, Aitken ZH, Politano A, Behler J, P Thompson A, Ko TW, Ong SP, Chalykh O, Korogod D, Podryabinkin E, Shapeev A,
+Li J, Mishin Y, Pei Z, Liu X, Kim J, Park Y, Hwang S, Han S, Sheriff K, Cao Y, Freitas R. Model Simul Mater Sci Eng, 2025, 33: 023301
+10
+Behler J. Chem Rev, 2021, 121: 10037–10072
+11
+Manzhos S, Carrington Jr. T. Chem Rev, 2021, 121: 10187–10217
+12
+Deringer VL, Caro MA, Csányi G. Adv Mater, 2019, 31: 1902765
+13
+Wang Y, Takaba K, Chen MS, Wieder M, Xu Y, Zhu T, Zhang JZ, Nagle A, Yu K, Wang X. arXiv: 2409.01931
+14
+Wen T, Zhang L, Wang H, E W, Srolovitz DJ. Mater Futures, 2022, 1: 022601
+15
+Weinan E. arXiv: 2009.14596
+16
+Duval A, Mathis SV, Joshi CK, Schmidt V, Miret S, Malliaros FD, Cohen T, Liò P, Bengio Y, Bronstein M. arXiv: 2312.07511
+17
+Zhang D, Liu X, Zhang X, Zhang C, Cai C, Bi H, Du Y, Qin X, Peng A, Huang J, Li B, Shan Y, Zeng J, Zhang Y, Liu S, Li Y, Chang J, Wang
+X, Zhou S, Liu J, Luo X, Wang Z, Jiang W, Wu J, Yang Y, Yang J, Yang M, Gong FQ, Zhang L, Shi M, Dai FZ, York DM, Liu S, Zhu T, Zhong
+Z, Lv J, Cheng J, Jia W, Chen M, Ke G, E W, Zhang L, Wang H. npj Comput Mater, 2024, 10: 293
+18
+Geiger M, Smidt T. arXiv: 2207.09453
+19
+Han J, Rong Y, Xu T, Huang W. arXiv: 2202.07230
+20
+Reiser P, Neubert M, Eberhard A, Torresi L, Zhou C, Shao C, Metni H, van Hoesel C, Schopmans H, Sommer T, Friederich P. Commun Mater,
+2022, 3: 93
+21
+Mueller T, Hernandez A, Wang C. J Chem Phys, 2020, 152: 050902
+22
+Schtt K, Kindermans P-J, Sauceda Felix HE, Chmiela S, Tkatchenko A, Müller K-R. Schnet: A continuous-filter convolutional neural network
+for modeling quantum interactions. In: Proceedings of the Advances in Neural Information Processing Systems. Long Beach, 2017
+23
+Schütt KT, Arbabzadah F, Chmiela S, Müller KR, Tkatchenko A. Nat Commun, 2017, 8: 13890
+24
+Wang L, Liu Y, Lin Y, Liu H, Ji S. In: Proceedings of the Advances in Neural Information Processing Systems. New Orleans, 2022, 35: 650–664
+25
+Batzner S, Musaelian A, Sun L, Geiger M, Mailoa JP, Kornbluth M, Molinari N, Smidt TE, Kozinsky B. Nat Commun, 2022, 13: 2453
+26
+Batatia I, Kovacs DP, Simm G, Ortner C, Csanyi G. MACE: Higher order equivariant message passing neural networks for fast and accurate
+force fields. In: Proceedings of the Advances in Neural Information Processing Systems. New Orleans, 2022. 11423–11436
+27
+Behler J, Parrinello M. Phys Rev Lett, 2007, 98: 146401
+28
+Bartók AP, Kondor R, Csányi G. Phys Rev B, 2013, 87: 184115
+29
+Gubler M, Finkler JA, Schäfer MR, Behler J, Goedecker S. J Chem Theor Comput, 2024, 20: 7264–7271
+30
+Musaelian A, Batzner S, Johansson A, Sun L, Owen CJ, Kornbluth M, Kozinsky B. Nat Commun, 2023, 14: 579
+31
+Yan K, Bohde M, Kryvenko A, Xiang Z, Zhao K, Zhu S, Kolachina S, Sarıtürk D, Xie J, Arroyave R, Qian X, Qian X, Ji S. arXiv: 2503.05771
+32
+Grisafi A, Ceriotti M. J Chem Phys, 2019, 151: 204105
+中国科学: 化学
+2025 年
+第55 卷
+第6 期
+1747
+
+
+=== 第 15 页 ===
+33
+Wang T, He X, Li M, Li Y, Bi R, Wang Y, Cheng C, Shen X, Meng J, Zhang H, Liu H, Wang Z, Li S, Shao B, Liu TY. Nature, 2024, 635: 1019–
+1027
+34
+Wang H, Zhang L, Han J, E W. Comput Phys Commun, 2018, 228: 178–184
+35
+Zhang Y, Wang H, Chen W, Zeng J, Zhang L, Wang H, E W. Comput Phys Commun, 2020, 253: 107206
+36
+Cui T, Tang C, Zhou D, Li Y, Gong X, Ouyang W, Su M, Zhang S. Nat Commun, 2025, 16: 1891
+37
+Hu J, Zhou L, Jiang J. CCS Chemistry, 2025, 7: 716–730
+38
+Xu L, Jiang J. J Chem Theor Comput, 2024, 20: 7785–7795
+39
+Huang S, Shang C, Kang P, Zhang X, Liu Z. WIREs Comput Mol Sci, 2019, 9: e1415
+40
+Huang Y, Xia Y, Yang L, Wei J, Yang YI, Gao YQ. Chin J Chem, 2022, 40: 160–168
+41
+Xie F, Lu T, Meng S, Liu M. Sci Bull, 2024, 69: 3525–3532
+42
+Gong S, Zhang Y, Mu Z, Pu Z, Wang H, Yu Z, Chen M, Zheng T, Wang Z, Chen L. arXiv: 2404.07181
+43
+Fan Z, Wang Y, Ying P, Song K, Wang J, Wang Y, Zeng Z, Xu K, Lindgren E, Rahm JM, Gabourie AJ, Liu J, Dong H, Wu J, Chen Y, Zhong Z,
+Sun J, Erhart P, Su Y, Ala-Nissila T. J Chem Phys, 2022, 157: 114801
+44
+Xia J, Zhang Y, Jiang B. arXiv: 2502.07335
+45
+Smith JS, Isayev O, Roitberg AE. Chem Sci, 2017, 8: 3192–3203
+46
+Drautz R. Phys Rev B, 2019, 99: 014104
+47
+Drautz R. Phys Rev B, 2020, 102: 024104
+48
+Dusson G, Bachmayr M, Csányi G, Drautz R, Etter S, van der Oord C, Ortner C. J Comput Phys, 2022, 454: 110946
+49
+Chmiela S, Sauceda HE, Poltavsky I, Müller KR, Tkatchenko A. Comput Phys Commun, 2019, 240: 38–45
+50
+Christensen AS, Bratholm LA, Faber FA, Anatole von Lilienfeld O. J Chem Phys, 2020, 152: 044107
+51
+Unke OT, Meuwly M. J Chem Theor Comput, 2019, 15: 3678–3693
+52
+Liu Y, Wang L, Liu M, Lin Y, Zhang X, Oztekin B, Ji S. Spherical message passing for 3D molecular graphs. In: Proceedings of the
+International Conference on Learning Representations. Cambridge, 2022
+53
+Satorras VG, Hoogeboom E, Welling M. E(n) equivariant graph neural networks. In: Proceedings of the International Conference on Machine
+Learning. New York, 2021. 9323–9332
+54
+Schtt K, Unke O, Gastegger M. Equivariant message passing for the prediction of tensorial properties and molecular spectra. In: Proceedings of
+the International Conference on Machine Learning. Vienna, 2021. 9377–9388
+55
+Jing B, Eismann S, Suriana P, Townshend RJL, Dror R. Learning from protein structure with geometric vector perceptrons. In: Proceedings of
+the International Conference on Learning Representations. Vienna, 2021
+56
+Le T, Noé F, Clevert D-A. arXiv: 2202.09891
+57
+Thomas N, Smidt T, Kearnes S, Yang L, Li L, Kohlhoff K, Riley P. arXiv: 1802.08219
+58
+Anderson B, Hy TS, Kondor R. Cormorant: Covariant molecular neural networks. In: Proceedings of the Advances in Neural Information
+Processing Systems. Vancouver, 2019
+59
+Brandstetter J, Hesselink R, van der Pol E, Bekkers EJ, Welling M. Geometric and physical quantities improve E(3) equivariant message
+passing. In: Proceedings of the International Conference on Learning Representations. Cambridge, 2022
+60
+Liao Y-L, Smidt T. Equiformer: Equivariant graph attention transformer for 3D atomistic graphs. In: Proceedings of the Eleventh International
+Conference on Learning Representations. Nairobi, 2023
+61
+Batatia I, Batzner S, Kovács DP, Musaelian A, Simm GNC, Drautz R, Ortner C, Kozinsky B, Csányi G. Nat Mach Intell, 2025: 1–12
+62
+Zhang X, Wang L, Helwig J, Luo Y, Fu C, Xie Y, Liu M, Lin Y, Xu Z, Yan K, Adams K, Weiler M, Li X, Fu T, Wang Y, Strasser A, Yu H, Xie Y,
+Fu X, Xu S, Liu Y, Du Y, Saxton A, Ling H, Lawrence H, Stärk H, Gui S, Edwards C, Gao N, Ladera A, Wu T, Hofgard EF, Tehrani AM, Wang
+R, Daigavane A, Bohde M, Kurtin J, Huang Q, Phung T, Xu M, Joshi CK, Mathis SV, Azizzadenesheli K, Fang A, Aspuru-Guzik A, Bekkers E,
+Bronstein M, Zitnik M, Anandkumar A, Ermon S, Liò P, Yu R, Günnemann S, Leskovec J, Ji H, Sun J, Barzilay R, Jaakkola T, Coley CW, Qian
+X, Qian X, Smidt T, Ji S. arXiv: 2307.08423
+63
+Kovács DP, Batatia I, Arany ES, Csányi G. J Chem Phys, 2023, 159: 044118
+64
+Fu X, Wu Z, Wang W, Xie T, Keten S, Gomez-Bombarelli R, Jaakkola T. Trans Mach Learn Res, arXiv: 2210.07237
+65
+Joshi CK, Bodnar C, Mathis SV, Cohen T, Lio P. arXiv: 2301.09308
+胡俊宝等: 机器学习力场: 跨学科应用中的前沿进展与技术挑战
+1748
+
+
+=== 第 16 页 ===
+66
+Rackers JA, Tecot L, Geiger M, Smidt TE. Mach Learn-Sci Technol, 2023, 4: 015027
+67
+Kovács DP, Moore JH, Browning NJ, Batatia I, Horton JT, Kapil V, Witt WC, Magdău I-B, Cole DJ, Csányi G. arXiv: 2312.15211
+68
+Passaro S, Zitnick CL. Reducing SO(3) convolutions to SO(2) for efficient equivariant GNNS. In: Proceedings of the International Conference
+on Machine Learning. Hawaii, 2023. 27420–27438
+69
+Frank JT, Unke OT, Müller KR, Chmiela S. Nat Commun, 2024, 15: 6539
+70
+Luo S, Chen T, Krishnapriyan AS. Enabling efficient equivariant operations in the fourier basis via gaunt tensor products. In: Proceedings of the
+Twelfth International Conference on Learning Representations. Vienna, 2024
+71
+Pun GPP, Batra R, Ramprasad R, Mishin Y. Nat Commun, 2019, 10: 2339
+72
+Gao A, Remsing RC. Nat Commun, 2022, 13: 1572
+73
+Handley CM, Hawe GI, Kell DB, Popelier PLA. Phys Chem Chem Phys, 2009, 11: 6365
+74
+Bilbrey JA, Heindel JP, Schram M, Bandyopadhyay P, Xantheas SS, Choudhury S. J Chem Phys, 2020, 153: 024302
+75
+Shoghi N, Kolluru A, Kitchin JR, Ulissi ZW, Zitnick CL, Wood BM. arXiv: 2310.16802
+76
+Liu Z, Lin L, Jia Q, Cheng Z, Jiang Y, Guo Y, Ma J. J Chem Inf Model, 2021, 61: 1066–1082
+77
+Poltavsky I, Puleva M, Charkin-Gorbulin A, Fonseca G, Batatia I, Browning NJ, Chmiela S, Cui M, Frank JT, Heinen S, Huang B, Käser S,
+Kabylda A, Khan D, Müller C, Price AJA, Riedmiller K, Töpfer K, Ko TW, Meuwly M, Rupp M, Csányi G, Anatole von Lilienfeld O, Margraf
+JT, Müller KR, Tkatchenko A. Chem Sci, 2025, 16: 3738–3754
+78
+Huang J, Zhang L, Wang H, Zhao J, Cheng J, E W. J Chem Phys, 2021, 154: 094703
+79
+Fedik N, Zubatyuk R, Kulichenko M, Lubbers N, Smith JS, Nebgen B, Messerly R, Li YW, Boldyrev AI, Barros K, Isayev O, Tretiak S. Nat
+Rev Chem, 2022, 6: 653–672
+80
+Schran C, Brezina K, Marsalek O. J Chem Phys, 2020, 153: 104105
+81
+Zhang L, Lin DY, Wang H, Car R, E W. Phys Rev Mater, 2019, 3: 023804
+82
+Kulichenko M, Barros K, Lubbers N, Li YW, Messerly R, Tretiak S, Smith JS, Nebgen B. Nat Comput Sci, 2023, 3: 230–239
+83
+Vandermause J, Torrisi SB, Batzner S, Xie Y, Sun L, Kolpak AM, Kozinsky B. npj Comput Mater, 2020, 6: 20
+84
+Xie Y, Vandermause J, Sun L, Cepellotti A, Kozinsky B. npj Comput Mater, 2021, 7: 40
+85
+Magdău IB, Arismendi-Arrieta DJ, Smith HE, Grey CP, Hermansson K, Csányi G. npj Comput Mater, 2023, 9: 146
+86
+Park Y, Kim J, Hwang S, Han S. J Chem Theor Comput, 2024, 20: 4857–4868
+87
+Wang Z, Wu H, Sun L, He X, Liu Z, Shao B, Wang T, Liu TY. J Chem Phys, 2023, 159: 035101
+88
+Kılıç Ç, Güler-Kılıç S. J Chem Phys, 2024, 161: 174106
+89
+Jia W, Wang H, Chen M, Lu D, Lin L, Car R, Weinan E, Zhang L. Pushing the limit of molecular dynamics with ab initio accuracy to 100
+million atoms with machine learning. In: Proceedings of the SC20: International Conference for High Performance Computing, Networking,
+Storage and Analysis. Atlanta, 2020. 1–14
+90
+Nguyen-Cong K, Willman JT, Moore SG, Belonoshko AB, Gayatri R, Weinberg E, Wood MA, Thompson AP, Oleynik II. Billion atom
+molecular dynamics simulations of carbon at extreme conditions and experimental time and length scales. In: Proceedings of the International
+Conference for High Performance Computing, Networking, Storage and Analysis. Atlanta, 2021. 1–12
+91
+Johansson A, Xie Y, Owen C J, Lim JS, Sun L, Vandermause J, Kozinsky B. arXiv: 2204.12573
+92
+Guo D, Yang D, Zhang H, Song J, Zhang R, Xu R, Zhu Q, Ma S, Wang P, Bi X. arXiv: 2501.12948
+93
+Jiang W, Zhang Y, Zhang L, Wang H. Chin Phys B, 2021, 30: 050706
+94
+Jain A, Ong SP, Hautier G, Chen W, Richards WD, Dacek S, Cholia S, Gunter D, Skinner D, Ceder G, Persson KA. APL Mater, 2013, 1:
+011002
+95
+Riebesell J, Goodall RE, Benner P, Chiang Y, Deng B, Lee AA, Jain A, Persson KA. arXiv: 2308.14920
+96
+Roederer M, Nozzi JL, Nason MC. Cytometry Pt A, 2011, 79A: 167–174
+97
+Devereux C, Smith JS, Huddleston KK, Barros K, Zubatyuk R, Isayev O, Roitberg AE. J Chem Theor Comput, 2020, 16: 4192–4202
+98
+Chmiela S, Vassilev-Galindo V, Unke OT, Kabylda A, Sauceda HE, Tkatchenko A, Müller KR. Sci Adv, 2023, 9: eadf0873
+99
+Ruddigkeit L, van Deursen R, Blum LC, Reymond JL. J Chem Inf Model, 2012, 52: 2864–2875
+100
+Ramakrishnan R, Dral PO, Rupp M, von Lilienfeld OA. Sci Data, 2014, 1: 1–7
+101
+Unke OT, Stöhr M, Ganscha S, Unterthiner T, Maennel H, Kashubin S, Ahlin D, Gastegger M, Medrano Sandonas L, Berryman JT, Tkatchenko
+中国科学: 化学
+2025 年
+第55 卷
+第6 期
+1749
+
+
+=== 第 17 页 ===
+A, Müller KR. Sci Adv, 2024, 10: eadn4397
+102
+Schreiner M, Bhowmik A, Vegge T, Busk J, Winther O. Sci Data, 2022, 9: 779
+103
+Tran R, Lan J, Shuaibi M, Wood BM, Goyal S, Das A, Heras-Domingo J, Kolluru A, Rizvi A, Shoghi N, Sriram A, Therrien F, Abed J, Voznyy
+O, Sargent EH, Ulissi Z, Zitnick CL. ACS Catal, 2023, 13: 3066–3084
+104
+Barroso-Luque L, Shuaibi M, Fu X, Wood BM, Dzamba M, Gao M, Rizvi A, Zitnick CL, Ulissi ZW. arXiv: 2410.12771
+105
+Ullah A, Chen Y, Dral PO. Mach Learn-Sci Technol, 2024, 5: 041001
+106
+Vita JA, Fuemmeler EG, Gupta A, Wolfe GP, Tao AQ, Elliott RS, Martiniani S, Tadmor EB. J Chem Phys, 2023, 159: 154802
+107
+Yu H, Giantomassi M, Materzanini G, Wang J, Rignanese G. Mater Genome Eng Adv, 2024, 2: e58
+108
+Zhao Q, Han Y, Zhang D, Wang J, Zhong P, Cui T, Yin B, Cao Y, Jia H, Duan C. ChemRxiv, 2025
+109
+Jacobs R, Morgan D, Attarian S, Meng J, Shen C, Wu Z, Xie CY, Yang JH, Artrith N, Blaiszik B, Ceder G, Choudhary K, Csanyi G, Cubuk ED,
+Deng B, Drautz R, Fu X, Godwin J, Honavar V, Isayev O, Johansson A, Kozinsky B, Martiniani S, Ong SP, Poltavsky I, Schmidt KJ, Takamoto
+S, Thompson AP, Westermayr J, Wood BM. Curr Opin Solid State Mater Sci, 2025, 35: 101214
+Machine learning force fields: recent advances and technical
+challenges in cross-disciplinary applications
+Junbao Hu1,2, Lifeng Xu1,2, Jian Jiang1,2*
+1 Beijing National Laboratory for Molecular Sciences, State Key Laboratory of Polymer Physics and Chemistry, Institute of Chemistry, Chinese
+Academy of Sciences, Beijing 100190, China
+2 University of Chinese Academy of Sciences, Beijing 100049, China
+*Corresponding author (email: jiangj@iccas.ac.cn)
+Abstract: Machine learning force fields have achieved significant breakthroughs in theoretical model development,
+algorithm innovation, and practical applications in recent years. The core objective lies in integrating quantum chemical
+calculation accuracy with machine learning efficiency to enable large-scale molecular dynamics simulations. This
+review systematically examines recent advances in this field: First, it outlines the developmental trajectory and critical
+challenges of MLFFs, with particular emphasis on the theoretical foundations and algorithmic implementations of
+higher-order equivariant neural networks. Second, it discusses the advantages and innovative approaches of active
+learning methodologies in enhancing data acquisition efficiency. Third, it reveals current limitations in complex system
+applications, including structural collapse and weak interaction failures in organic systems, along with parallel efficiency
+bottlenecks. Finally, it summarizes the current status of general-purpose large models and public datasets in this domain.
+As a typical paradigm of AI for Science, MLFFs are poised to advance applications in material discovery and molecular
+design, providing theoretical and methodological foundations for precise simulations of complex chemical systems.
+Keywords:
+machine learning, equivariant neural networks, molecular dynamics simulations, general-purpose large
+models, weak interactions, active learning
+doi: 10.1360/SSC-2025-0084
+胡俊宝等: 机器学习力场: 跨学科应用中的前沿进展与技术挑战
+1750

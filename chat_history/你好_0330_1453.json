@@ -1,0 +1,20 @@
+[
+  {
+    "role": "user",
+    "content": "你好"
+  },
+  {
+    "role": "assistant",
+    "content": "你好！很高兴为你服务。有什么我可以帮助你的吗？",
+    "reasoning_content": "用户用中文说了\"你好\"，这是最基本的问候语。我应该用中文回复，保持友好和礼貌。\n\n可能的回复：\n1. \"你好！很高兴见到你。\" \n2. \"你好！有什么我可以帮你的吗？\"\n3. \"你好！我是AI助手，有什么可以为你效劳的？\"\n\n选择第二种或第三种比较好，既回应了问候，又主动提供帮助。用\"您好\"可能更正式一些，但\"你好\"也很自然友好。\n\n最终决定：用\"你好！很高兴为你服务。有什么我可以帮助你的吗？\"这样既亲切又实用。"
+  },
+  {
+    "role": "user",
+    "content": "hello"
+  },
+  {
+    "role": "assistant",
+    "content": "Hello! How can I help you today?",
+    "reasoning_content": "用户用英文说 \"hello\"，我应该用英文回复，保持友好和礼貌。\n\n回复应该简洁、自然，类似于 \"Hello! How can I help you today?\" 或 \"Hi there! What can I do for you?\"\n\n既然用户之前用中文打过招呼，现在又用英文，我可以用英文回复，但也可以表示我可以处理两种语言。不过最简单的就是直接用英文回应。\n\n我会说：\n\"Hello! How can I help you today?\" \n\n或者稍微友好一点：\n\"Hi there! Nice to meet you. How can I assist you today?\"\n\n选择标准、友好的回复即可。"
+  }
+]

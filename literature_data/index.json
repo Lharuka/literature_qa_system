@@ -1,0 +1,14 @@
+{
+  "E1FF4BD9F05B": {
+    "pdf_path": "D:\\文献\\机器学习力场_跨学科应用中的前沿进展与技术挑战_胡俊宝.pdf",
+    "text_file": "D:\\programs\\front\\literature_data\\texts\\E1FF4BD9F05B.txt",
+    "json_file": "D:\\programs\\front\\literature_data\\summaries\\E1FF4BD9F05B.json",
+    "created_at": "2026-03-30T16:28:54.572552"
+  },
+  "D132A827B130": {
+    "pdf_path": "D:\\文献\\TabM.pdf",
+    "text_file": "D:\\programs\\front\\literature_data\\texts\\D132A827B130.txt",
+    "json_file": "D:\\programs\\front\\literature_data\\summaries\\D132A827B130.json",
+    "created_at": "2026-03-30T16:30:53.361531"
+  }
+}

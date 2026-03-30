@@ -1,0 +1,43 @@
+# 文献问答系统配置文件
+
+# API 设置
+api:
+  base_url: "https://api.moonshot.cn/v1"
+  timeout: 120.0  # 请求超时时间（秒）
+
+# 模型设置
+model:
+  default_model: "kimi-k2.5"  # 默认使用的模型
+  temperature: 1.0  # 温度（当前模型只支持1.0）
+  max_tokens: 8192  # 最大生成token数
+
+# 文献检索设置
+retrieval:
+  max_retries: 3  # 检索失败时的重试次数
+  retry_backoff: 2  # 重试间隔指数基数（1s, 2s, 4s...）
+  
+# 文献内容设置
+literature:
+  max_text_length: 8000  # 每篇文献上传的最大字符数
+  abstract_preview_length: 200  # 侧边栏显示的摘要预览长度
+  title_max_length: 20  # 文件名中使用的问题最大长度
+
+# 系统提示词设置
+system_prompts:
+  qa_system: |
+    你是一个专业的文献问答助手。你可以根据用户的问题，从以下文献中找到相关内容并回答。
+    
+    === 回答规则 ===
+    1. 当用户提问时，先根据摘要判断哪些文献可能与问题相关
+    2. 如果确定有相关文献，输出格式：
+       - 先说明引用了哪些文献（列出文献编码）
+       - 然后基于文献内容回答问题
+    3. 如果没有相关文献，请明确告知用户
+    4. 回答时要准确引用文献内容，不要编造信息
+  
+  retrieval_system: "你是一个文献检索助手，擅长根据摘要判断文献相关性。"
+
+# 数据目录设置
+data_dirs:
+  literature_data: "literature_data"  # 文献数据目录
+  qa_history: "qa_history"  # 问答历史保存目录
